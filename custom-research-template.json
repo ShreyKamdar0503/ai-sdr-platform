@@ -1,0 +1,150 @@
+{
+  "name": "AI SDR - Custom Research Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "custom-research",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.hunter.io/v2/domain-search",
+        "options": {},
+        "queryParametersUi": {
+          "parameter": [
+            {
+              "name": "domain",
+              "value": "={{ $json.payload.company_domain }}"
+            },
+            {
+              "name": "api_key",
+              "value": "={{ $env.HUNTER_API_KEY }}"
+            }
+          ]
+        }
+      },
+      "id": "hunter-lookup",
+      "name": "Hunter.io Lookup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://api.apollo.io/v1/people/match",
+        "method": "POST",
+        "authentication": "predefinedCredentialType",
+        "options": {},
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "email",
+              "value": "={{ $json.payload.email }}"
+            }
+          ]
+        }
+      },
+      "id": "apollo-enrich",
+      "name": "Apollo Enrichment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 400]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByIndex"
+      },
+      "id": "merge-data",
+      "name": "Merge Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "company_info.name",
+              "value": "={{ $json.data.organization.name }}"
+            },
+            {
+              "name": "company_info.size",
+              "value": "={{ $json.data.organization.employees }}"
+            },
+            {
+              "name": "company_info.industry",
+              "value": "={{ $json.data.organization.industry }}"
+            }
+          ],
+          "number": [
+            {
+              "name": "quality_score",
+              "value": "={{ $json.data.emails ? 85 : 50 }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-output",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {"node": "Hunter.io Lookup", "type": "main", "index": 0},
+          {"node": "Apollo Enrichment", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "Hunter.io Lookup": {
+      "main": [
+        [{"node": "Merge Results", "type": "main", "index": 0}]
+      ]
+    },
+    "Apollo Enrichment": {
+      "main": [
+        [{"node": "Merge Results", "type": "main", "index": 1}]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [{"node": "Format Output", "type": "main", "index": 0}]
+      ]
+    },
+    "Format Output": {
+      "main": [
+        [{"node": "Respond to Webhook", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["ai-sdr", "research", "template"]
+}
