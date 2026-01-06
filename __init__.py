@@ -1,1 +1,1 @@
-"""Package: integrations"""
+"""Package: mcp_servers"""
