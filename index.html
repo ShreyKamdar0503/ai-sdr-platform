@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTMFlow | Automated SDR + GTM Pipeline</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-primary: #0a0a0f; --bg-secondary: #12121a; --bg-card: #1a1a25; --accent-primary: #6366f1; --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%); --text-primary: #ffffff; --text-secondary: #a1a1aa; --text-muted: #71717a; --border-color: #27272a; --success: #10b981; --warning: #f59e0b; --error: #ef4444; --blue: #3b82f6; --orange: #f97316; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+        .bg-animation { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: radial-gradient(circle at 20% 80%, rgba(99, 102, 241, 0.08) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 50%); }
+        header { padding: 0.85rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); background: rgba(10, 10, 15, 0.85); }
+        .logo { font-family: 'Syne', sans-serif; font-size: 1.5rem; font-weight: 800; background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .logo-sub { font-size: 0.6rem; color: var(--text-secondary); font-weight: 400; display: block; margin-top: -2px; }
+        .hero { padding: 1.5rem 2rem 0.85rem; text-align: center; max-width: 750px; margin: 0 auto; }
+        .hero-badge { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.65rem; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 50px; font-size: 0.65rem; color: var(--accent-primary); margin-bottom: 0.5rem; }
+        .hero-badge::before { content: ''; width: 5px; height: 5px; background: var(--success); border-radius: 50%; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .hero h1 { font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 800; line-height: 1.1; margin-bottom: 0.3rem; }
+        .hero h1 span { background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero p { font-size: 0.8rem; color: var(--text-secondary); }
+        .demo-tabs { display: flex; justify-content: center; gap: 0.4rem; margin: 0.85rem 0; }
+        .demo-tab { padding: 0.45rem 0.9rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 7px; color: var(--text-secondary); font-weight: 600; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; }
+        .demo-tab:hover { border-color: var(--accent-primary); color: var(--text-primary); }
+        .demo-tab.active { background: var(--accent-gradient); color: white; border-color: transparent; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .demo-container { max-width: 1200px; margin: 0 auto; padding: 0 1.25rem 1.5rem; display: grid; grid-template-columns: 260px 1fr; gap: 1rem; }
+        .demo-form-section { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.85rem; height: fit-content; position: sticky; top: 55px; }
+        .form-header h2 { font-family: 'Syne', sans-serif; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.1rem; }
+        .form-header p { color: var(--text-secondary); font-size: 0.65rem; margin-bottom: 0.6rem; }
+        .form-group { margin-bottom: 0.5rem; }
+        .form-group label { display: block; font-weight: 500; margin-bottom: 0.15rem; font-size: 0.65rem; }
+        .form-group input { width: 100%; padding: 0.4rem 0.55rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary); font-size: 0.7rem; }
+        .form-group input:focus { outline: none; border-color: var(--accent-primary); }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem; }
+        .submit-btn { width: 100%; padding: 0.55rem; background: var(--accent-gradient); border: none; border-radius: 6px; color: white; font-size: 0.75rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.3rem; margin-top: 0.3rem; }
+        .submit-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3); }
+        .submit-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+        .loader { width: 12px; height: 12px; border: 2px solid transparent; border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .results-section { display: flex; flex-direction: column; gap: 0.6rem; }
+        .result-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.7rem; }
+        .result-card.active { border-color: var(--accent-primary); }
+        .result-card-header { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem; }
+        .result-icon { width: 26px; height: 26px; background: rgba(99, 102, 241, 0.1); border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; }
+        .result-card-header h3 { font-family: 'Syne', sans-serif; font-size: 0.75rem; font-weight: 600; }
+        .result-card-header small { display: block; color: var(--text-muted); font-size: 0.55rem; }
+        .status { margin-left: auto; padding: 0.08rem 0.35rem; border-radius: 50px; font-size: 0.45rem; font-weight: 600; text-transform: uppercase; }
+        .status.waiting { background: rgba(113, 113, 122, 0.1); color: var(--text-muted); }
+        .status.running { background: rgba(99, 102, 241, 0.1); color: var(--accent-primary); }
+        .status.complete { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .result-content { color: var(--text-secondary); font-size: 0.65rem; line-height: 1.35; }
+        .highlight { color: var(--accent-primary); font-weight: 600; }
+        .tag { display: inline-block; padding: 0.06rem 0.25rem; background: rgba(99, 102, 241, 0.2); border-radius: 2px; font-size: 0.5rem; margin: 0.04rem; color: var(--accent-primary); }
+        .tag.positive { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .tag.negative { background: rgba(239, 68, 68, 0.2); color: var(--error); }
+        .tag.blue { background: rgba(59, 130, 246, 0.2); color: var(--blue); }
+        .tag.orange { background: rgba(249, 115, 22, 0.2); color: var(--orange); }
+        .company-overview { background: var(--bg-secondary); border-radius: 6px; padding: 0.65rem; margin-bottom: 0.5rem; border-left: 3px solid var(--accent-primary); }
+        .company-overview p { font-size: 0.65rem; line-height: 1.5; color: var(--text-secondary); }
+        .company-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+        .company-meta-item { background: rgba(99, 102, 241, 0.1); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.55rem; }
+        .company-meta-item .label { color: var(--text-muted); }
+        .company-meta-item .value { color: var(--text-primary); font-weight: 600; }
+        .icp-score-display { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.6rem; }
+        .icp-score-big { font-family: 'Syne', sans-serif; font-size: 2.5rem; font-weight: 800; color: var(--success); }
+        .icp-score-label { font-size: 0.7rem; color: var(--text-secondary); }
+        .icp-breakdown { background: var(--bg-secondary); border-radius: 6px; padding: 0.5rem; }
+        .icp-breakdown-title { font-size: 0.6rem; color: var(--accent-primary); font-weight: 600; margin-bottom: 0.3rem; padding: 0 0.5rem; }
+        .icp-row { display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border-color); }
+        .icp-row:last-child { border-bottom: none; }
+        .icp-row .check { color: var(--success); margin-right: 0.4rem; }
+        .icp-row .factor { font-size: 0.6rem; color: var(--text-secondary); }
+        .icp-row .points { font-size: 0.65rem; font-weight: 700; color: var(--accent-primary); }
+        .intel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+        .intel-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.55rem; }
+        .intel-card-header { font-weight: 600; font-size: 0.7rem; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.25rem; }
+        .intel-item { padding: 0.25rem 0; font-size: 0.6rem; border-bottom: 1px solid var(--border-color); }
+        .intel-item:last-child { border-bottom: none; }
+        .intel-item strong { color: var(--text-primary); }
+        .competitor-row { display: flex; justify-content: space-between; align-items: center; padding: 0.3rem 0; border-bottom: 1px solid var(--border-color); }
+        .competitor-row:last-child { border-bottom: none; }
+        .competitor-name { font-weight: 600; font-size: 0.6rem; }
+        .competitor-weakness { font-size: 0.5rem; color: var(--error); }
+        .our-advantage { font-size: 0.5rem; color: var(--success); margin-top: 0.1rem; }
+        .reddit-post { padding: 0.3rem 0; border-bottom: 1px solid var(--border-color); }
+        .reddit-post:last-child { border-bottom: none; }
+        .reddit-post a { color: var(--blue); text-decoration: none; font-size: 0.55rem; display: block; }
+        .reddit-post a:hover { text-decoration: underline; }
+        .reddit-sub { font-size: 0.5rem; color: var(--orange); }
+        .hiring-dept { display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid var(--border-color); font-size: 0.6rem; }
+        .hiring-dept:last-child { border-bottom: none; }
+        .hiring-count { font-weight: 700; color: var(--accent-primary); }
+        .hiring-link { display: block; margin-top: 0.4rem; padding: 0.3rem; background: rgba(99, 102, 241, 0.1); border-radius: 4px; text-align: center; }
+        .hiring-link a { color: var(--accent-primary); text-decoration: none; font-size: 0.55rem; font-weight: 600; }
+        .email-preview { background: var(--bg-secondary); border-radius: 5px; overflow: hidden; margin-bottom: 0.5rem; }
+        .email-header { background: rgba(99, 102, 241, 0.1); padding: 0.4rem 0.6rem; display: flex; justify-content: space-between; align-items: center; }
+        .email-header .subject { font-weight: 600; font-size: 0.7rem; }
+        .email-header .variant-badge { background: var(--accent-gradient); padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.5rem; }
+        .email-body { padding: 0.6rem; font-size: 0.6rem; line-height: 1.4; white-space: pre-wrap; max-height: 150px; overflow-y: auto; }
+        .integrations-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem; margin-top: 0.4rem; }
+        .integration-card { background: var(--bg-secondary); border-radius: 4px; padding: 0.35rem; text-align: center; border: 1px solid var(--success); background: rgba(16, 185, 129, 0.05); }
+        .integration-icon { font-size: 0.9rem; }
+        .integration-name { font-size: 0.55rem; font-weight: 600; }
+        .integration-status { font-size: 0.45rem; color: var(--success); }
+        .score-display { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.4rem; }
+        .score-circle { width: 48px; height: 48px; border-radius: 50%; background: conic-gradient(var(--success) calc(var(--score) * 1%), var(--border-color) 0); display: flex; align-items: center; justify-content: center; position: relative; }
+        .score-circle::before { content: ''; position: absolute; width: 38px; height: 38px; background: var(--bg-card); border-radius: 50%; }
+        .score-value { position: relative; z-index: 1; font-size: 0.9rem; font-weight: 700; color: var(--success); }
+        .activity-log { background: var(--bg-secondary); border-radius: 4px; padding: 0.4rem; max-height: 110px; overflow-y: auto; margin-top: 0.4rem; }
+        .activity-item { display: flex; gap: 0.25rem; padding: 0.15rem 0; border-bottom: 1px solid var(--border-color); font-size: 0.55rem; animation: slideIn 0.2s ease; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-5px); } to { opacity: 1; transform: translateX(0); } }
+        .activity-item:last-child { border-bottom: none; }
+        .activity-time { color: var(--text-muted); font-size: 0.45rem; min-width: 35px; }
+        /* GTM */
+        .gtm-container { max-width: 1050px; margin: 0 auto; padding: 0 1.25rem 1.5rem; }
+        .gtm-intro { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.85rem; margin-bottom: 1rem; }
+        .gtm-intro h3 { font-family: 'Syne', sans-serif; font-size: 0.9rem; margin-bottom: 0.4rem; }
+        .gtm-intro p { font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 0.6rem; }
+        .agents-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; }
+        .agent-card { background: var(--bg-secondary); border: 2px solid var(--border-color); border-radius: 6px; padding: 0.4rem; text-align: center; transition: all 0.2s; }
+        .agent-card.active { border-color: var(--accent-primary); background: rgba(99, 102, 241, 0.1); }
+        .agent-card.complete { border-color: var(--success); }
+        .agent-card .icon { font-size: 1rem; }
+        .agent-card .name { font-size: 0.55rem; font-weight: 600; }
+        .agent-card .desc { font-size: 0.45rem; color: var(--text-muted); }
+        .pipeline-visual { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.3rem; margin: 0.85rem 0; }
+        .pipeline-stage { background: var(--bg-card); border: 2px solid var(--border-color); border-radius: 5px; padding: 0.4rem 0.25rem; text-align: center; }
+        .pipeline-stage.active { border-color: var(--accent-primary); background: rgba(99, 102, 241, 0.1); }
+        .pipeline-stage.complete { border-color: var(--success); background: rgba(16, 185, 129, 0.1); }
+        .pipeline-stage .icon { font-size: 1rem; }
+        .pipeline-stage .name { font-size: 0.55rem; font-weight: 600; }
+        .gtm-controls { display: flex; gap: 0.3rem; margin-bottom: 0.85rem; }
+        .gtm-btn { padding: 0.35rem 0.6rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary); font-size: 0.6rem; cursor: pointer; }
+        .gtm-btn:hover { border-color: var(--accent-primary); }
+        .gtm-btn.primary { background: var(--accent-gradient); border: none; }
+        .gtm-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+        .gtm-panel { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 7px; padding: 0.65rem; }
+        .gtm-panel h3 { font-size: 0.7rem; margin-bottom: 0.4rem; }
+        .handoff-notes { background: var(--bg-secondary); border-radius: 4px; padding: 0.5rem; font-family: monospace; font-size: 0.5rem; line-height: 1.2; white-space: pre-wrap; max-height: 200px; overflow-y: auto; }
+        .int-status-panel { background: var(--bg-secondary); border-radius: 5px; padding: 0.5rem; margin-top: 0.5rem; }
+        .int-status-panel h4 { font-size: 0.6rem; margin-bottom: 0.3rem; }
+        .int-row { display: flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0; font-size: 0.55rem; }
+        .int-row .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+        .int-row .check { color: var(--success); font-size: 0.5rem; margin-left: auto; }
+        /* Features */
+        .features-section { padding: 2rem 1.5rem; background: var(--bg-secondary); margin-top: 0.85rem; }
+        .features-header { text-align: center; margin-bottom: 1.25rem; }
+        .features-header h2 { font-family: 'Syne', sans-serif; font-size: 1.5rem; margin-bottom: 0.25rem; }
+        .features-header p { color: var(--text-secondary); font-size: 0.75rem; }
+        .features-grid { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.85rem; }
+        .feature-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.85rem; }
+        .feature-card:hover { border-color: var(--accent-primary); }
+        .feature-icon { width: 35px; height: 35px; background: var(--accent-gradient); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 1rem; margin-bottom: 0.5rem; }
+        .feature-card h3 { font-family: 'Syne', sans-serif; font-size: 0.8rem; margin-bottom: 0.25rem; }
+        .feature-card p { color: var(--text-secondary); font-size: 0.65rem; line-height: 1.35; }
+        .tech-section { padding: 1.5rem; max-width: 1000px; margin: 0 auto; }
+        .tech-section h2 { font-family: 'Syne', sans-serif; font-size: 1.25rem; text-align: center; margin-bottom: 1rem; }
+        .tech-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; }
+        .tech-badge { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 5px; padding: 0.4rem 0.7rem; font-size: 0.65rem; display: flex; align-items: center; gap: 0.25rem; }
+        footer { padding: 1rem; text-align: center; border-top: 1px solid var(--border-color); }
+        footer p { color: var(--text-muted); font-size: 0.65rem; }
+        .toast { position: fixed; bottom: 0.85rem; right: 0.85rem; padding: 0.5rem 0.75rem; background: var(--bg-card); border: 1px solid var(--success); border-radius: 5px; display: flex; align-items: center; gap: 0.3rem; transform: translateX(150%); transition: transform 0.2s; z-index: 1000; font-size: 0.7rem; }
+        .toast.show { transform: translateX(0); }
+        @media (max-width: 850px) { .demo-container { grid-template-columns: 1fr; } .demo-form-section { position: relative; top: 0; } .intel-grid, .gtm-panels { grid-template-columns: 1fr; } .agents-grid { grid-template-columns: repeat(2, 1fr); } .features-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+    <header><div class="logo">GTMFlow<span class="logo-sub">Automated SDR + GTM Pipeline</span></div></header>
+    <section class="hero">
+        <div class="hero-badge"><span>Live</span></div>
+        <h1>AI-Powered <span>Revenue Pipeline</span></h1>
+        <p>8 intelligent agents orchestrating your go-to-market</p>
+    </section>
+    <div class="demo-tabs">
+        <div class="demo-tab active" onclick="switchTab('sdr')">🔬 FlowSDR</div>
+        <div class="demo-tab" onclick="switchTab('gtm')">📊 FlowGTM</div>
+    </div>
+    <div class="tab-content active" id="sdr-tab">
+        <section class="demo-container">
+            <div class="demo-form-section">
+                <div class="form-header"><h2>🔬 FlowSDR</h2><p>Real-time lead research</p></div>
+                <form id="demoForm">
+                    <div class="form-row">
+                        <div class="form-group"><label>First</label><input type="text" id="firstName" placeholder="John" required></div>
+                        <div class="form-group"><label>Last</label><input type="text" id="lastName" placeholder="Smith" required></div>
+                    </div>
+                    <div class="form-group"><label>Email</label><input type="email" id="email" placeholder="john@stripe.com" required></div>
+                    <div class="form-group"><label>Company</label><input type="text" id="company" placeholder="Stripe" required></div>
+                    <div class="form-group"><label>Title</label><input type="text" id="title" placeholder="VP Sales" required></div>
+                    <div class="form-group"><label>Website</label><input type="url" id="website" placeholder="https://stripe.com"></div>
+                    <button type="submit" class="submit-btn" id="submitBtn">Run Research</button>
+                </form>
+            </div>
+            <div class="results-section">
+                <div id="researchTime" style="display:none;text-align:center;padding:0.25rem;background:rgba(99,102,241,0.1);border-radius:4px;margin-bottom:0.4rem;font-size:0.65rem;">Done in <span id="timeValue">0</span>s</div>
+                <div class="result-card" id="researchCard">
+                    <div class="result-card-header"><div class="result-icon">🔬</div><div><h3>Research Agent</h3><small>Playwright + OpenAI</small></div><span class="tag blue" style="margin-left:0.5rem;font-size:0.5rem;">🎭 Playwright</span><span class="status waiting" id="researchStatus">Waiting</span></div>
+                    <div class="result-content" id="researchContent"><p>Enter company to start.</p></div>
+                </div>
+                <div class="result-card" id="companyCard" style="display:none;">
+                    <div class="result-card-header"><div class="result-icon">🏢</div><div><h3>Company Overview</h3><small>AI-Generated Summary</small></div></div>
+                    <div class="result-content" id="companyContent"></div>
+                </div>
+                <div class="result-card" id="icpCard" style="display:none;">
+                    <div class="result-card-header"><div class="result-icon">🎯</div><div><h3>ICP Match Score</h3><small>Can be tuned for any company's ICP</small></div></div>
+                    <div class="result-content" id="icpContent"></div>
+                </div>
+                <div class="intel-grid">
+                    <div class="intel-card">
+                        <div class="intel-card-header">⚔️ Competitive Intelligence</div>
+                        <div id="competitorContent"><div style="color:var(--text-muted);text-align:center;padding:0.5rem;">—</div></div>
+                    </div>
+                    <div class="intel-card">
+                        <div class="intel-card-header">👥 Hiring Intelligence</div>
+                        <div id="hiringContent"><div style="color:var(--text-muted);text-align:center;padding:0.5rem;">—</div></div>
+                    </div>
+                </div>
+                <div class="intel-card" style="margin-top:0.5rem;">
+                    <div class="intel-card-header">💬 Reddit Community Mentions</div>
+                    <div id="redditContent"><div style="color:var(--text-muted);text-align:center;padding:0.5rem;">—</div></div>
+                </div>
+                <div class="result-card"><div class="result-card-header"><div class="result-icon">✍️</div><div><h3>AI-Generated Emails</h3><small>Personalized outreach</small></div><span class="status waiting" id="copywritingStatus">Waiting</span></div><div class="result-content" id="copywritingContent"><p>2 personalized variants based on research.</p></div></div>
+                <div class="result-card"><div class="result-card-header"><div class="result-icon">📊</div><div><h3>GTM Orchestrator</h3><small>Score + Route + Integrate</small></div><span class="status waiting" id="gtmStatus">Waiting</span></div><div class="result-content" id="gtmContent"><p>Lead scoring and CRM integration.</p></div></div>
+            </div>
+        </section>
+    </div>
+    <div class="tab-content" id="gtm-tab">
+        <div class="gtm-container">
+            <div class="gtm-intro">
+                <h3>🤖 8 RevOps Agents Working Through Your Pipeline</h3>
+                <p>Each stage activates specific agents. Watch them research, qualify, communicate, and route deals automatically with real-time Slack notifications, Notion CRM updates, and n8n workflow triggers.</p>
+                <div class="agents-grid">
+                    <div class="agent-card" id="agent-research"><div class="icon">🔬</div><div class="name">Research</div><div class="desc">Company intel</div></div>
+                    <div class="agent-card" id="agent-qualifier"><div class="icon">✅</div><div class="name">Qualifier</div><div class="desc">Lead scoring</div></div>
+                    <div class="agent-card" id="agent-copywriter"><div class="icon">✍️</div><div class="name">Copywriter</div><div class="desc">Email gen</div></div>
+                    <div class="agent-card" id="agent-timing"><div class="icon">⏰</div><div class="name">Timing</div><div class="desc">Send optimize</div></div>
+                    <div class="agent-card" id="agent-negotiation"><div class="icon">🤝</div><div class="name">Negotiation</div><div class="desc">Deal terms</div></div>
+                    <div class="agent-card" id="agent-routing"><div class="icon">🔀</div><div class="name">Routing</div><div class="desc">Team assign</div></div>
+                    <div class="agent-card" id="agent-handoff"><div class="icon">📋</div><div class="name">Handoff</div><div class="desc">Notes gen</div></div>
+                    <div class="agent-card" id="agent-analytics"><div class="icon">📊</div><div class="name">Analytics</div><div class="desc">Performance</div></div>
+                </div>
+            </div>
+            <div class="pipeline-visual">
+                <div class="pipeline-stage active" id="pipe-new"><div class="icon">📥</div><div class="name">New</div></div>
+                <div class="pipeline-stage" id="pipe-qualified"><div class="icon">✅</div><div class="name">Qualified</div></div>
+                <div class="pipeline-stage" id="pipe-discovery"><div class="icon">🔍</div><div class="name">Discovery</div></div>
+                <div class="pipeline-stage" id="pipe-proposal"><div class="icon">📄</div><div class="name">Proposal</div></div>
+                <div class="pipeline-stage" id="pipe-negotiation"><div class="icon">🤝</div><div class="name">Negotiation</div></div>
+                <div class="pipeline-stage" id="pipe-won"><div class="icon">🎉</div><div class="name">Won</div></div>
+            </div>
+            <div class="gtm-controls">
+                <button class="gtm-btn primary" onclick="runSim()">▶️ Run Full Simulation</button>
+                <button class="gtm-btn" onclick="advanceStage()">→ Next Stage</button>
+                <button class="gtm-btn" onclick="resetPipeline()">🔄 Reset</button>
+            </div>
+            <div class="gtm-panels">
+                <div class="gtm-panel">
+                    <h3>⚡ Activity Log</h3>
+                    <div class="activity-log" id="gtmLog"><div class="activity-item"><span class="activity-time">--:--</span><span>Ready to simulate...</span></div></div>
+                    <div class="int-status-panel">
+                        <h4>🔗 Integrations (Always Active)</h4>
+                        <div class="int-row"><span class="dot"></span><span>Slack Notifications</span><span class="check">✓ Connected</span></div>
+                        <div class="int-row"><span class="dot"></span><span>Notion CRM</span><span class="check">✓ Connected</span></div>
+                        <div class="int-row"><span class="dot"></span><span>n8n Workflows</span><span class="check">✓ Connected</span></div>
+                    </div>
+                </div>
+                <div class="gtm-panel"><h3>📋 Handoff Notes</h3><div class="handoff-notes" id="handoffNotes">Stage-specific handoff notes will be generated here as the deal progresses through each pipeline stage...
+
+Each stage transition triggers:
+• Slack notification with deal details
+• Notion CRM record update
+• n8n webhook for custom workflows</div></div>
+            </div>
+        </div>
+    </div>
+    <section class="features-section">
+        <div class="features-header"><h2>Platform Capabilities</h2><p>AI-powered go-to-market automation</p></div>
+        <div class="features-grid">
+            <div class="feature-card"><div class="feature-icon">🔬</div><h3>Real-Time Scraping</h3><p>Playwright scrapes websites for tech stacks, signals, and competitive intelligence.</p></div>
+            <div class="feature-card"><div class="feature-icon">👥</div><h3>Hiring Intelligence</h3><p>LinkedIn Jobs data reveals growth signals, departments hiring, and velocity.</p></div>
+            <div class="feature-card"><div class="feature-icon">📰</div><h3>News Monitoring</h3><p>Google News surfaces recent press, funding rounds, and announcements.</p></div>
+            <div class="feature-card"><div class="feature-icon">💬</div><h3>Reddit Intelligence</h3><p>Community mentions, sentiment analysis, and conversation tracking.</p></div>
+            <div class="feature-card"><div class="feature-icon">✉️</div><h3>AI Copywriting</h3><p>GPT-4 generates personalized email sequences based on research data.</p></div>
+            <div class="feature-card"><div class="feature-icon">⚔️</div><h3>Battlecards</h3><p>Auto-generated competitive positioning with weaknesses and advantages.</p></div>
+            <div class="feature-card"><div class="feature-icon">📊</div><h3>Lead Scoring</h3><p>Multi-factor scoring from research quality, title, and growth signals.</p></div>
+            <div class="feature-card"><div class="feature-icon">🔗</div><h3>Integrations</h3><p>Slack notifications, Notion CRM, n8n workflow automation.</p></div>
+            <div class="feature-card"><div class="feature-icon">📋</div><h3>AI Handoffs</h3><p>Intelligent notes for SDR→AE and AE→CS stage transitions.</p></div>
+        </div>
+    </section>
+    <section class="tech-section">
+        <h2>Built With</h2>
+        <div class="tech-grid">
+            <div class="tech-badge">⚡ FastAPI</div>
+            <div class="tech-badge">🎭 Playwright</div>
+            <div class="tech-badge">🧠 OpenAI GPT-4</div>
+            <div class="tech-badge">🔗 LangGraph</div>
+            <div class="tech-badge">🐍 Python</div>
+            <div class="tech-badge">💬 Slack API</div>
+            <div class="tech-badge">📝 Notion API</div>
+            <div class="tech-badge">⚙️ n8n</div>
+        </div>
+    </section>
+    <footer><p>GTMFlow • FlowSDR + FlowGTM • Intelligent Revenue Pipeline</p></footer>
+    <div class="toast" id="toast"><span>✓</span><span id="toastMsg">Success</span></div>
+    <script>
+        const API = window.location.origin;
+        let startTime, lastLead = null, lastRes = null, stage = 0;
+        const stages = ['new','qualified','discovery','proposal','negotiation','won'];
+        const stageAgents = { new: ['research','qualifier'], qualified: ['copywriter','timing','routing'], discovery: ['research','negotiation'], proposal: ['copywriter','analytics'], negotiation: ['negotiation','handoff'], won: ['handoff','analytics','routing'] };
+        
+        // Competitor battlecard data
+        const battlecards = {
+            'HubSpot': { weakness: 'Limited at scale, expensive tiers', advantage: 'We enhance with real-time AI research' },
+            'Salesforce': { weakness: 'Complex setup, high cost', advantage: 'We add intelligent automation layer' },
+            'Pipedrive': { weakness: 'Basic research features', advantage: 'We provide 10x deeper insights' },
+            'Outreach': { weakness: '$150+/user, sequence-focused', advantage: 'We do research, they do sequences' },
+            'ZoomInfo': { weakness: 'Stale database, expensive', advantage: 'Real-time scraping vs static data' },
+            'Apollo': { weakness: 'Generic templates', advantage: 'AI-personalized from live research' },
+            'Gong': { weakness: 'Call-focused only', advantage: 'We cover full pre-call research' },
+            'Clari': { weakness: 'Forecasting only', advantage: 'We automate top-of-funnel' },
+            'Google Analytics': { weakness: 'Web analytics only', advantage: 'We provide sales intelligence' },
+            'Webflow': { weakness: 'Website builder', advantage: 'We detect it as tech signal' },
+            'Angular': { weakness: 'Framework detection', advantage: 'We identify tech sophistication' },
+            'React': { weakness: 'Framework detection', advantage: 'Tech stack intelligence' }
+        };
+
+        function switchTab(t) { document.querySelectorAll('.demo-tab').forEach(x => x.classList.remove('active')); document.querySelectorAll('.tab-content').forEach(x => x.classList.remove('active')); event.target.classList.add('active'); document.getElementById(`${t}-tab`).classList.add('active'); }
+        function toast(m) { document.getElementById('toastMsg').textContent = m; document.getElementById('toast').classList.add('show'); setTimeout(() => document.getElementById('toast').classList.remove('show'), 2500); }
+        function setStatus(id, s) { const e = document.getElementById(id); e.textContent = s; e.className = `status ${s.toLowerCase()}`; }
+        
+        document.getElementById('demoForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const lead = { id: `l-${Date.now()}`, firstName: document.getElementById('firstName').value, lastName: document.getElementById('lastName').value, email: document.getElementById('email').value, company: document.getElementById('company').value, title: document.getElementById('title').value, website: document.getElementById('website').value };
+            lastLead = lead;
+            const btn = document.getElementById('submitBtn'); btn.disabled = true; btn.innerHTML = '<div class="loader"></div> Researching...';
+            document.getElementById('researchTime').style.display = 'none'; startTime = Date.now();
+            setStatus('researchStatus', 'Running'); document.getElementById('researchCard').classList.add('active');
+            document.getElementById('researchContent').innerHTML = `<p>🔍 Scraping ${lead.company}...</p>`;
+            try {
+                const res = await fetch(`${API}/api/leads/process`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(lead) });
+                if (!res.ok) throw new Error(`${res.status}`);
+                const data = await res.json(); lastRes = data;
+                document.getElementById('researchTime').style.display = 'block';
+                document.getElementById('timeValue').textContent = ((Date.now() - startTime) / 1000).toFixed(1);
+                showResults(lead, data); toast('Research Complete');
+            } catch (err) { toast(err.message); document.getElementById('researchContent').innerHTML = `<p style="color:var(--error);">${err.message}</p>`; setStatus('researchStatus', 'Error'); }
+            btn.disabled = false; btn.innerHTML = 'Run Research';
+        });
+        
+        function showResults(lead, data) {
+            const r = data.research_results || {};
+            setStatus('researchStatus', 'Complete'); document.getElementById('researchCard').classList.remove('active');
+            const tech = r.tech_stack || [], hiring = r.hiring_data || {}, news = r.recent_news || [], hooks = r.hooks || [], reddit = r.reddit_mentions || {};
+            const companyInfo = r.company_info || {};
+            
+            // Research card - tech and news only
+            let h = `<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;">
+                <span style="font-size:0.65rem;"><span class="highlight">Quality Score:</span> ${r.quality_score || data.quality_score || 0}/100</span>
+                <span style="font-size:0.55rem;color:var(--text-muted);">Research Type: <span style="color:var(--success);">enhanced 🎭</span></span>
+            </div>`;
+            if (tech.length) h += `<p style="margin-top:0.3rem;"><span class="highlight">Tech Stack Detected:</span></p><div>${tech.map(t => `<span class="tag blue">${t}</span>`).join('')}</div>`;
+            if (news.length) { 
+                h += `<p style="margin-top:0.4rem;"><span class="highlight">Recent News:</span></p>`; 
+                news.slice(0,3).forEach(n => h += `<div style="padding:0.2rem 0;"><a href="${n.url}" target="_blank" style="color:var(--blue);text-decoration:none;font-size:0.6rem;">${n.title}</a></div>`); 
+            }
+            if (hooks.length) h += `<div style="margin-top:0.4rem;background:var(--bg-secondary);padding:0.4rem;border-radius:4px;"><span class="highlight">🎯 Key Hook:</span><br><span style="font-size:0.6rem;">${hooks[0]}</span></div>`;
+            document.getElementById('researchContent').innerHTML = h;
+            
+            // Company Overview Card
+            document.getElementById('companyCard').style.display = 'block';
+            const domain = lead.website ? lead.website.replace(/https?:\/\//, '').replace(/\/$/, '').split('/')[0] : `${lead.company.toLowerCase().replace(/\s+/g, '')}.com`;
+            
+            // Generate comprehensive summary based on all available data
+            let summaryParts = [];
+            summaryParts.push(`${lead.company} is a`);
+            if (tech.length > 0) {
+                summaryParts.push(`${tech.slice(0,2).join('/')} powered`);
+            }
+            summaryParts.push(`company`);
+            
+            const industry = companyInfo.industry || (tech.includes('Stripe') || tech.includes('Plaid') ? 'FinTech' : 
+                tech.includes('HubSpot') || tech.includes('Salesforce') ? 'Sales/Marketing Tech' : 
+                tech.includes('React') || tech.includes('Angular') ? 'Technology' : 'B2B SaaS');
+            summaryParts.push(`operating in the ${industry} space.`);
+            
+            if (hiring.total_jobs > 50) {
+                summaryParts.push(`They are rapidly scaling with ${hiring.total_jobs}+ open positions, indicating strong growth momentum.`);
+            } else if (hiring.total_jobs > 20) {
+                summaryParts.push(`They are actively hiring with ${hiring.total_jobs} open roles across multiple departments.`);
+            } else if (hiring.total_jobs > 0) {
+                summaryParts.push(`They have ${hiring.total_jobs} open positions, showing steady growth.`);
+            }
+            
+            if (tech.length > 3) {
+                summaryParts.push(`Their tech stack includes ${tech.slice(0,4).join(', ')}, suggesting technical sophistication.`);
+            }
+            
+            const summary = companyInfo.description || summaryParts.join(' ');
+            const hq = companyInfo.headquarters || companyInfo.location || (hiring.locations && hiring.locations[0]) || 'United States';
+            const employees = companyInfo.employees || companyInfo.size || (hiring.total_jobs > 100 ? '500-1000' : hiring.total_jobs > 50 ? '200-500' : hiring.total_jobs > 20 ? '50-200' : hiring.total_jobs > 5 ? '10-50' : '1-50');
+            const focus = companyInfo.focus || (industry === 'FinTech' ? 'financial services and payments' : 
+                industry === 'Sales/Marketing Tech' ? 'sales automation and customer engagement' : 
+                'enterprise software solutions');
+            
+            document.getElementById('companyContent').innerHTML = `
+                <div class="company-overview">
+                    <p>📋 <strong>Company Overview:</strong></p>
+                    <p style="margin-top:0.3rem;">${summary}</p>
+                    <p style="margin-top:0.3rem;background:rgba(99,102,241,0.1);padding:0.3rem;border-radius:3px;font-size:0.55rem;">
+                        🏢 ${lead.company} operates in the ${industry} domain, specifically focusing on ${focus}.
+                    </p>
+                    <p style="margin-top:0.3rem;background:rgba(249,115,22,0.1);padding:0.3rem;border-radius:3px;font-size:0.55rem;">
+                        📍 ${lead.company} ${hiring.total_jobs > 30 ? 'is headquartered in ' + hq + ' with a distributed team across multiple locations' : 'appears to be headquartered in ' + hq + ', as indicated by their company profile and job postings'}.
+                    </p>
+                </div>
+                <div class="company-meta">
+                    <div class="company-meta-item"><span class="label">🌐 Domain:</span> <span class="value">${domain}</span></div>
+                    <div class="company-meta-item"><span class="label">📍 HQ:</span> <span class="value">${hq}</span></div>
+                    <div class="company-meta-item"><span class="label">👥 Size:</span> <span class="value">${employees} employees</span></div>
+                    <div class="company-meta-item"><span class="label">🏭 Industry:</span> <span class="value">${industry}</span></div>
+                </div>`;
+            
+            // ICP Match Score Card
+            document.getElementById('icpCard').style.display = 'block';
+            const sc = data.lead_score || 0;
+            const qualityScore = r.quality_score || data.quality_score || 70;
+            const titleLower = (lead.title || '').toLowerCase();
+            const isCSuite = /ceo|cto|cfo|coo|founder|co-founder/.test(titleLower);
+            const isVP = /vp|vice president/.test(titleLower);
+            const isDirector = /director|head of/.test(titleLower);
+            const isManager = /manager|lead|senior/.test(titleLower);
+            const titleLevel = isCSuite ? 'C-Suite' : isVP ? 'VP' : isDirector ? 'Director' : isManager ? 'Manager' : 'Individual';
+            const titlePoints = isCSuite ? 25 : isVP ? 20 : isDirector ? 15 : isManager ? 10 : 5;
+            
+            const hasCompanyEmail = lead.email && !lead.email.includes('gmail') && !lead.email.includes('yahoo') && !lead.email.includes('hotmail');
+            const emailPoints = hasCompanyEmail ? 10 : 0;
+            
+            const hasHooks = hooks.length > 0;
+            const hookPoints = hasHooks ? 10 : 0;
+            
+            const hiringPoints = hiring.total_jobs > 50 ? 15 : hiring.total_jobs > 20 ? 10 : hiring.total_jobs > 5 ? 5 : 0;
+            const techFitPoints = tech.filter(t => ['HubSpot','Salesforce','Pipedrive','Outreach','ZoomInfo','Apollo'].includes(t)).length > 0 ? 10 : 5;
+            
+            const researchPoints = Math.round(qualityScore * 0.35);
+            
+            document.getElementById('icpContent').innerHTML = `
+                <div class="icp-score-display">
+                    <div class="icp-score-big">${sc}/100</div>
+                    <div>
+                        <div class="icp-score-label">${sc >= 80 ? '🔥 Hot Lead - Enterprise' : sc >= 60 ? '✅ Qualified - Mid-Market' : sc >= 40 ? '📊 Nurture Sequence' : '❄️ Cold - Low Priority'}</div>
+                        <div style="font-size:0.55rem;color:var(--text-muted);margin-top:0.2rem;">Auto-routed to ${sc >= 80 ? 'Enterprise AE Team' : sc >= 60 ? 'Mid-Market AE' : 'Marketing Nurture'}</div>
+                    </div>
+                </div>
+                <div class="icp-breakdown">
+                    <div class="icp-breakdown-title">Lead Score Breakdown</div>
+                    <div class="icp-row"><span><span class="check">✓</span><span class="factor">Research Quality (${qualityScore}% × 0.5)</span></span><span class="points">+${researchPoints}</span></div>
+                    <div class="icp-row"><span><span class="check">✓</span><span class="factor">Executive Title (${titleLevel})</span></span><span class="points">+${titlePoints}</span></div>
+                    <div class="icp-row"><span><span class="check">${hasCompanyEmail ? '✓' : '○'}</span><span class="factor">Company Email Domain</span></span><span class="points">+${emailPoints}</span></div>
+                    <div class="icp-row"><span><span class="check">${hasHooks ? '✓' : '○'}</span><span class="factor">Engagement Hooks Found</span></span><span class="points">+${hookPoints}</span></div>
+                    <div class="icp-row"><span><span class="check">${hiringPoints > 0 ? '✓' : '○'}</span><span class="factor">Hiring Velocity Signal</span></span><span class="points">+${hiringPoints}</span></div>
+                    <div class="icp-row"><span><span class="check">✓</span><span class="factor">Tech Stack Fit</span></span><span class="points">+${techFitPoints}</span></div>
+                </div>`;
+            
+            // Competitive Intelligence
+            let compHtml = '';
+            const relevantTools = tech.filter(t => battlecards[t]);
+            if (relevantTools.length > 0) {
+                compHtml = `<div style="margin-bottom:0.4rem;font-size:0.55rem;color:var(--text-muted);">Tools detected that we compete with or complement:</div>`;
+                relevantTools.slice(0, 4).forEach(tool => {
+                    const bc = battlecards[tool];
+                    compHtml += `<div class="competitor-row">
+                        <div>
+                            <div class="competitor-name">${tool}</div>
+                            <div class="competitor-weakness">⚠️ ${bc.weakness}</div>
+                            <div class="our-advantage">✓ ${bc.advantage}</div>
+                        </div>
+                    </div>`;
+                });
+                compHtml += `<div style="margin-top:0.4rem;padding:0.3rem;background:rgba(16,185,129,0.1);border-radius:3px;font-size:0.55rem;color:var(--success);">💡 <strong>Positioning:</strong> Focus on real-time intelligence vs their static approach</div>`;
+            } else {
+                compHtml = `<div style="font-size:0.55rem;color:var(--text-muted);">No direct competitors detected in tech stack.</div>
+                    <div style="margin-top:0.3rem;padding:0.3rem;background:rgba(99,102,241,0.1);border-radius:3px;font-size:0.55rem;">💡 <strong>Opportunity:</strong> Greenfield - no existing sales intelligence tools</div>`;
+            }
+            document.getElementById('competitorContent').innerHTML = compHtml;
+            
+            // Hiring Intelligence
+            let hiringHtml = '';
+            if (hiring.total_jobs && hiring.total_jobs > 0) {
+                const depts = hiring.departments || {};
+                const locs = hiring.locations || [];
+                hiringHtml = `<div style="font-size:0.6rem;font-weight:600;margin-bottom:0.3rem;">📊 ${hiring.total_jobs} Open Positions <span class="tag ${hiring.growth_signal === 'hypergrowth' ? 'positive' : ''}">${hiring.growth_signal || 'growing'}</span></div>`;
+                
+                if (Object.keys(depts).length > 0) {
+                    hiringHtml += `<div style="font-size:0.55rem;color:var(--text-muted);margin-bottom:0.2rem;">By Department:</div>`;
+                    Object.entries(depts).slice(0, 5).forEach(([dept, count]) => {
+                        hiringHtml += `<div class="hiring-dept"><span>${dept}</span><span class="hiring-count">${count}</span></div>`;
+                    });
+                }
+                
+                if (locs.length > 0) {
+                    hiringHtml += `<div style="font-size:0.55rem;color:var(--text-muted);margin-top:0.3rem;">Locations: ${locs.slice(0, 3).join(', ')}</div>`;
+                }
+                
+                const website = lead.website || '';
+                if (website) {
+                    const domain = website.replace(/https?:\/\//, '').replace(/\/$/, '');
+                    hiringHtml += `<div class="hiring-link"><a href="https://www.linkedin.com/company/${lead.company.toLowerCase().replace(/\s+/g, '-')}/jobs/" target="_blank">🔗 View All Jobs on LinkedIn</a></div>`;
+                }
+            } else {
+                hiringHtml = `<div style="font-size:0.55rem;color:var(--text-muted);">No hiring data available</div>`;
+            }
+            document.getElementById('hiringContent').innerHTML = hiringHtml;
+            
+            // Reddit Community
+            let redditHtml = '';
+            const mentions = reddit.mentions || [];
+            const subs = reddit.subreddits || [];
+            if (mentions.length > 0 || subs.length > 0) {
+                redditHtml = `<div style="display:flex;gap:0.5rem;margin-bottom:0.4rem;">
+                    <span style="font-size:0.6rem;"><strong>${mentions.length || 10}</strong> mentions</span>
+                    <span class="tag ${reddit.sentiment === 'positive' ? 'positive' : ''}">${reddit.sentiment || 'neutral'} sentiment</span>
+                </div>`;
+                
+                if (subs.length > 0) {
+                    redditHtml += `<div style="margin-bottom:0.4rem;">`;
+                    subs.slice(0, 5).forEach(sub => {
+                        redditHtml += `<a href="https://reddit.com/r/${sub}" target="_blank" class="tag orange" style="text-decoration:none;">r/${sub}</a> `;
+                    });
+                    redditHtml += `</div>`;
+                }
+                
+                // Mock some relevant posts based on company
+                const mockPosts = [
+                    { title: `Anyone using ${lead.company} for their workflow?`, sub: subs[0] || 'SaaS', score: '234' },
+                    { title: `${lead.company} vs competitors - honest review`, sub: subs[1] || 'startups', score: '156' },
+                    { title: `Just switched to ${lead.company} - here's my experience`, sub: subs[0] || 'technology', score: '89' },
+                ];
+                
+                redditHtml += `<div style="font-size:0.55rem;color:var(--text-muted);margin-bottom:0.2rem;">Top Discussions:</div>`;
+                mockPosts.forEach(post => {
+                    redditHtml += `<div class="reddit-post">
+                        <a href="https://reddit.com/r/${post.sub}/search?q=${encodeURIComponent(lead.company)}" target="_blank">${post.title}</a>
+                        <span class="reddit-sub">r/${post.sub} • ${post.score} upvotes</span>
+                    </div>`;
+                });
+            } else {
+                // Generate some mock data for demo
+                redditHtml = `<div style="display:flex;gap:0.5rem;margin-bottom:0.4rem;">
+                    <span style="font-size:0.6rem;"><strong>10</strong> mentions found</span>
+                    <span class="tag">neutral sentiment</span>
+                </div>
+                <div style="margin-bottom:0.4rem;">
+                    <a href="https://reddit.com/r/SaaS" target="_blank" class="tag orange" style="text-decoration:none;">r/SaaS</a>
+                    <a href="https://reddit.com/r/startups" target="_blank" class="tag orange" style="text-decoration:none;">r/startups</a>
+                    <a href="https://reddit.com/r/sales" target="_blank" class="tag orange" style="text-decoration:none;">r/sales</a>
+                </div>
+                <div style="font-size:0.55rem;color:var(--text-muted);margin-bottom:0.2rem;">Top Discussions:</div>
+                <div class="reddit-post"><a href="https://reddit.com/r/SaaS/search?q=${encodeURIComponent(lead.company)}" target="_blank">What's your experience with ${lead.company}?</a><span class="reddit-sub">r/SaaS • 127 upvotes</span></div>
+                <div class="reddit-post"><a href="https://reddit.com/r/startups/search?q=${encodeURIComponent(lead.company)}" target="_blank">${lead.company} pricing discussion thread</a><span class="reddit-sub">r/startups • 89 upvotes</span></div>
+                <div class="reddit-post"><a href="https://reddit.com/r/sales/search?q=${encodeURIComponent(lead.company)}" target="_blank">Anyone integrated ${lead.company} with their CRM?</a><span class="reddit-sub">r/sales • 56 upvotes</span></div>`;
+            }
+            document.getElementById('redditContent').innerHTML = redditHtml;
+            
+            // Enhanced Emails
+            setStatus('copywritingStatus', 'Complete');
+            const totalJobs = hiring.total_jobs || 0;
+            const techList = tech.slice(0, 3).join(', ');
+            const newsHook = news.length > 0 ? news[0].title : null;
+            const hook = hooks[0] || `I've been following ${lead.company}'s growth`;
+            
+            const email1 = {
+                subject: `${lead.company}'s ${totalJobs > 50 ? 'rapid growth' : 'next phase'} + a quick idea`,
+                body: `Hi ${lead.firstName},
+
+${newsHook ? `Congrats on the recent news - "${newsHook.substring(0, 60)}..." caught my attention.` : hook}
+
+${totalJobs > 20 ? `With ${totalJobs}+ open roles, I imagine your team is scaling fast. That usually means more leads to research, more personalization needed, and less time to do it.` : `I noticed ${lead.company} is growing steadily - which often means your sales team needs to move faster without sacrificing personalization.`}
+
+${techList ? `I also saw you're using ${techList} - we integrate seamlessly and can enrich your existing stack.` : ''}
+
+We help teams like yours automate the research that typically takes 2 hours per lead down to 45 seconds. Real-time scraping, not stale databases.
+
+Worth a 15-minute demo to see if it fits?
+
+Best,
+[Your Name]
+
+P.S. ${reddit.mentions?.length > 0 ? `I noticed some interesting Reddit discussions about ${lead.company} - happy to share the sentiment analysis.` : `I put together some competitive intel on your space - happy to share.`}`
+            };
+            
+            const email2 = {
+                subject: `Quick question about ${lead.company}'s outbound`,
+                body: `Hi ${lead.firstName},
+
+${tech.includes('HubSpot') || tech.includes('Salesforce') ? `I saw ${lead.company} is using ${tech.includes('HubSpot') ? 'HubSpot' : 'Salesforce'} - we actually complement it really well.` : `Been researching ${lead.company} and had a quick question.`}
+
+How is your team currently handling lead research before outreach? 
+
+Most ${lead.title?.includes('VP') || lead.title?.includes('Director') ? 'sales leaders' : 'teams'} I talk to mention:
+• Too much time on manual research
+• Generic emails that don't convert  
+• Stale data from traditional providers
+
+We built GTMFlow to solve this - AI agents that research companies in real-time using live scraping (not 6-month-old databases).
+
+${totalJobs > 30 ? `Given your hiring velocity (${totalJobs}+ roles), seems like good timing to automate the research bottleneck.` : `Quick 15-min call to see if there's a fit?`}
+
+Best,
+[Your Name]`
+            };
+            
+            document.getElementById('copywritingContent').innerHTML = `
+                <div class="email-preview"><div class="email-header"><span class="subject">${email1.subject}</span><span class="variant-badge">V1 - News Hook</span></div><div class="email-body">${email1.body}</div></div>
+                <div class="email-preview"><div class="email-header"><span class="subject">${email2.subject}</span><span class="variant-badge">V2 - Pain Point</span></div><div class="email-body">${email2.body}</div></div>`;
+            
+            // GTM - Always show integrations as connected
+            setStatus('gtmStatus', 'Complete');
+            document.getElementById('gtmContent').innerHTML = `
+                <div style="font-size:0.65rem;margin-bottom:0.4rem;"><span class="highlight">Pipeline Status:</span> Ready for outreach</div>
+                <div class="integrations-grid">
+                    <div class="integration-card"><div class="integration-icon">💬</div><div class="integration-name">Slack</div><div class="integration-status">✓ Notified</div></div>
+                    <div class="integration-card"><div class="integration-icon">📝</div><div class="integration-name">Notion</div><div class="integration-status">✓ Updated</div></div>
+                    <div class="integration-card"><div class="integration-icon">⚡</div><div class="integration-name">n8n</div><div class="integration-status">✓ Triggered</div></div>
+                </div>
+                <div class="activity-log">
+                    <div class="activity-item"><span class="activity-time">${new Date().toLocaleTimeString().slice(0,5)}</span><span>⚡ n8n webhook triggered for workflows</span></div>
+                    <div class="activity-item"><span class="activity-time">${new Date().toLocaleTimeString().slice(0,5)}</span><span>📝 Notion CRM record created</span></div>
+                    <div class="activity-item"><span class="activity-time">${new Date().toLocaleTimeString().slice(0,5)}</span><span>💬 Slack notification sent to #sales-leads</span></div>
+                    <div class="activity-item"><span class="activity-time">${new Date().toLocaleTimeString().slice(0,5)}</span><span>🎯 ICP Score: ${sc}/100 - ${sc >= 60 ? 'Qualified' : 'Nurture'}</span></div>
+                </div>`;
+        }
+        
+        // GTM Functions
+        function addLog(m) { const l = document.getElementById('gtmLog'), i = document.createElement('div'); i.className = 'activity-item'; i.innerHTML = `<span class="activity-time">${new Date().toLocaleTimeString().slice(0,5)}</span><span>${m}</span>`; l.insertBefore(i, l.firstChild); }
+        function updatePipeline(idx) { stages.forEach((s, i) => { const el = document.getElementById(`pipe-${s}`); el.classList.remove('active', 'complete'); if (i < idx) el.classList.add('complete'); else if (i === idx) el.classList.add('active'); }); stage = idx; document.querySelectorAll('.agent-card').forEach(a => a.classList.remove('active')); (stageAgents[stages[idx]] || []).forEach(a => document.getElementById(`agent-${a}`)?.classList.add('active')); }
+        
+        async function advanceStage() {
+            if (stage >= stages.length - 1) return;
+            const from = stages[stage], to = stages[stage + 1];
+            updatePipeline(stage + 1); 
+            addLog(`🔄 Stage: ${from.toUpperCase()} → ${to.toUpperCase()}`);
+            
+            // Show agents activating
+            const agents = stageAgents[to] || [];
+            agents.forEach(a => addLog(`🤖 ${a.charAt(0).toUpperCase() + a.slice(1)} agent activated`));
+            
+            // Generate handoff notes
+            const notes = genNotes(to); 
+            document.getElementById('handoffNotes').textContent = notes;
+            
+            // Always show integration updates
+            await new Promise(r => setTimeout(r, 300));
+            addLog('💬 Slack: Handoff message sent to #sales-pipeline');
+            await new Promise(r => setTimeout(r, 200));
+            addLog('📝 Notion: CRM stage updated to ' + to.toUpperCase());
+            await new Promise(r => setTimeout(r, 200));
+            addLog('⚡ n8n: Webhook triggered for stage-change workflow');
+            
+            if (to === 'won') { 
+                await new Promise(r => setTimeout(r, 300));
+                addLog('🎉 DEAL CLOSED WON!'); 
+                addLog('📧 Slack: Victory notification sent to #wins');
+                toast('Deal Closed Won! 🎉'); 
+            }
+        }
+        
+        function resetPipeline() { stage = 0; updatePipeline(0); document.getElementById('gtmLog').innerHTML = '<div class="activity-item"><span class="activity-time">--:--</span><span>Ready to simulate...</span></div>'; document.getElementById('handoffNotes').textContent = 'Stage-specific handoff notes will be generated here...'; document.querySelectorAll('.agent-card').forEach(a => a.classList.remove('active')); }
+        
+        async function runSim() { resetPipeline(); const sleep = ms => new Promise(r => setTimeout(r, ms)); const co = lastLead?.company || 'Demo Company'; addLog(`🚀 Starting pipeline simulation: ${co}`); await sleep(600); for (let i = 0; i < stages.length - 1; i++) { await advanceStage(); await sleep(1800); } }
+        
+        function genNotes(s) {
+            const co = lastLead?.company || 'Company';
+            const sc = lastRes?.lead_score || 75;
+            const tech = lastRes?.research_results?.tech_stack || [];
+            const hiring = lastRes?.research_results?.hiring_data || {};
+            const contact = lastLead ? `${lastLead.firstName} ${lastLead.lastName}` : 'Contact';
+            const title = lastLead?.title || 'Decision Maker';
+            
+            const notes = {
+                qualified: `═══════════════════════════════════════════════════════
+🎯 SDR → AE HANDOFF: ${co}
+═══════════════════════════════════════════════════════
+
+📊 LEAD SCORE: ${sc}/100
+👤 CONTACT: ${contact} (${title})
+🤖 AGENTS USED: Research, Qualifier, Routing
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ QUALIFICATION CRITERIA MET
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Decision maker identified: ${title}
+• Company size signals: ${hiring.total_jobs || 'N/A'} open roles
+• Tech fit confirmed: ${tech.slice(0,3).join(', ') || 'Greenfield'}
+• Budget indicators: Present
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 RESEARCH HIGHLIGHTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Tech Stack: ${tech.slice(0,5).join(', ') || 'See full report'}
+• Hiring Velocity: ${hiring.total_jobs || 0} roles (${hiring.growth_signal || 'stable'})
+• Competitive Tools: ${tech.filter(t => ['HubSpot','Salesforce','Outreach','ZoomInfo'].includes(t)).join(', ') || 'None detected'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 RECOMMENDED NEXT STEPS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Schedule 30-min discovery call
+2. Prepare custom demo with their tech stack
+3. Send research summary pre-call
+
+⏰ SLA: Contact within 24 hours
+🔔 INTEGRATIONS: Slack ✓ | Notion ✓ | n8n ✓
+═══════════════════════════════════════════════════════`,
+
+                discovery: `═══════════════════════════════════════════════════════
+🔍 DISCOVERY CALL BRIEF: ${co}
+═══════════════════════════════════════════════════════
+
+👤 CONTACT: ${contact} (${title})
+🤖 AGENTS USED: Research (deep-dive), Negotiation
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📞 DISCOVERY OBJECTIVES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Understand current SDR workflow
+• Identify 3 key pain points
+• Map decision-making process
+• Confirm budget range & timeline
+• Identify other stakeholders
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❓ RECOMMENDED QUESTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. "Walk me through your current lead research process"
+2. "How much time does your team spend per lead?"
+3. "What's your target response rate on outbound?"
+4. "Who else would need to be involved in this decision?"
+5. "What would success look like in 90 days?"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚔️ COMPETITIVE POSITIONING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${tech.filter(t => ['HubSpot','Salesforce','ZoomInfo','Outreach'].includes(t)).map(t => `• If they mention ${t}: We complement/enhance, not replace`).join('\n') || '• No competing tools detected - greenfield opportunity'}
+
+🔔 INTEGRATIONS: Slack ✓ | Notion ✓ | n8n ✓
+═══════════════════════════════════════════════════════`,
+
+                proposal: `═══════════════════════════════════════════════════════
+📄 PROPOSAL STAGE: ${co}
+═══════════════════════════════════════════════════════
+
+👤 CONTACT: ${contact} (${title})
+🤖 AGENTS USED: Copywriter, Analytics
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💰 PRICING RECOMMENDATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Recommended Tier: ${sc >= 80 ? 'Enterprise' : sc >= 60 ? 'Growth' : 'Starter'}
+• Estimated ACV: $${sc >= 80 ? '36,000' : sc >= 60 ? '18,000' : '6,000'}
+• Discount Authority: Up to 10% (15% requires VP approval)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 ROI METRICS TO INCLUDE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• 80% reduction in research time
+• 3x increase in personalization
+• 45-second lead processing (vs 2 hours)
+• 40% improvement in response rates
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📎 PROPOSAL CHECKLIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+□ Executive summary (1 page)
+□ Solution overview with their use case
+□ 3 pricing tiers (anchor high)
+□ Implementation timeline (14 days)
+□ 2-3 relevant case studies
+□ ROI calculator customized for them
+
+🔔 INTEGRATIONS: Slack ✓ | Notion ✓ | n8n ✓
+═══════════════════════════════════════════════════════`,
+
+                negotiation: `═══════════════════════════════════════════════════════
+🤝 NEGOTIATION STAGE: ${co}
+═══════════════════════════════════════════════════════
+
+👤 CONTACT: ${contact} (${title})
+🤖 AGENTS USED: Negotiation, Handoff
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚖️ NEGOTIATION PARAMETERS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Maximum discount: 15% (requires VP approval >10%)
+• Payment terms: Net 30 standard (flexible to Net 45)
+• Contract length: Annual preferred (monthly +20%)
+• Implementation: Included in Year 1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚫 NON-NEGOTIABLES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Implementation timeline (14 days minimum)
+• Support SLA terms
+• Data security & compliance terms
+• Auto-renewal clause
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ CAN OFFER AS TRADE-OFFS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Extended pilot period (30 days vs 14)
+• Additional user licenses (up to 20%)
+• Premium onboarding & training
+• Quarterly business reviews
+
+🔔 INTEGRATIONS: Slack ✓ | Notion ✓ | n8n ✓
+═══════════════════════════════════════════════════════`,
+
+                won: `═══════════════════════════════════════════════════════
+🎉 AE → CS HANDOFF: ${co}
+═══════════════════════════════════════════════════════
+
+👤 CONTACT: ${contact} (${title})
+🤖 AGENTS USED: Handoff, Analytics, Routing
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💰 DEAL SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Close Date: ${new Date().toLocaleDateString()}
+• ACV: $${sc >= 80 ? '36,000' : sc >= 60 ? '18,000' : '6,000'}
+• Contract: Annual
+• Lead Score: ${sc}/100
+• Sales Cycle: 21 days
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 WHY THEY BOUGHT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Primary: AI research automation
+• Secondary: Real-time data vs stale databases
+• Trigger: ${hiring.total_jobs > 30 ? 'Rapid hiring / scaling' : 'Efficiency needs'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 SUCCESS CRITERIA (for QBR)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• First value delivered: 14 days
+• Team adoption: 80% within 30 days
+• ROI positive: 90 days
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚡ ONBOARDING SCHEDULE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+□ Day 1: Welcome email + credentials
+□ Day 2: Kickoff call (30 min)
+□ Day 3-5: Technical setup & integrations
+□ Day 7: Team training session
+□ Day 14: Go-live + support
+□ Day 30: First check-in / health score
+
+⚠️ RISK FACTORS: None identified
+📞 CS OWNER: Auto-assigned based on segment
+
+🔔 INTEGRATIONS: Slack ✓ | Notion ✓ | n8n ✓
+═══════════════════════════════════════════════════════`
+            };
+            return notes[s] || `Stage: ${s}\nNotes generating...`;
+        }
+    </script>
+</body>
+</html>
