@@ -1,0 +1,59 @@
+ENVIRONMENT=development
+LOG_LEVEL=INFO
+
+# PostgreSQL (leave as-is for Docker)
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=ai_sdr
+POSTGRES_USER=ai_sdr_user
+POSTGRES_PASSWORD=your_secure_password_123
+
+# Redis (leave as-is for Docker)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=your_redis_password_456
+
+# ====================
+# YOUR API KEYS - FILL THESE IN!
+# ====================
+
+# OpenAI (REQUIRED)
+OPENAI_API_KEY=sk-abcdef1234567890abcdef1234567890abcdef12
+
+# Pinecone (REQUIRED)
+PINECONE_API_KEY=pcsk_24PWX6_GCUvmWyviLApDgThU1NuEFKndZyPpvcaYhT6mWC7bGDY5zbnpnmNo6799RBiYi2
+PINECONE_ENVIRONMENT=us-east-1
+PINECONE_INDEX_NAME=aisdrgtm
+
+# Hunter.io (RECOMMENDED)
+HUNTER_API_KEY=38423d7b76a460e0daabb267c37d3393f65c3b15
+
+# Slack (OPTIONAL)
+SLACK_BOT_TOKEN=
+SLACK_SIGNING_SECRET=
+
+# ====================
+# DEPLOYMENT MODE
+# ====================
+DEPLOYMENT_MODE=saas
+
+# ====================
+# GROWTHBOOK (Feature Flags)
+# ====================
+# These work automatically with Docker
+GROWTHBOOK_API_URL=http://localhost:3100
+GROWTHBOOK_JWT_SECRET=demo-jwt-secret-change-in-production
+GROWTHBOOK_ENCRYPTION_KEY=demo-encryption-key-32characters
+
+# ====================
+# LLM CONFIGURATION
+# ====================
+# Use OpenAI (easiest for demo)
+LLM_MODEL=gpt-4o-mini
+VLLM_API_URL=
+VLLM_API_KEY=
+
+# ====================
+# x402 PAYMENTS (OPTIONAL)
+# ====================
+X402_ENABLED=false

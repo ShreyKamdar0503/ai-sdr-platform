@@ -1,0 +1,208 @@
+version: '3.8'
+
+# AI SDR Platform - Complete Stack
+# Supports both SaaS (out-of-box) and PaaS (n8n execution) modes
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ai_sdr}
+      POSTGRES_USER: ${POSTGRES_USER:-ai_sdr_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ai_sdr_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-sdr-network
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-sdr-network
+
+  # vLLM for self-hosted LLM inference (optional - requires GPU)
+  vllm:
+    image: vllm/vllm-openai:latest
+    environment:
+      MODEL_NAME: ${VLLM_MODEL:-meta-llama/Meta-Llama-3.1-8B-Instruct}
+    volumes:
+      - vllm_models:/root/.cache/huggingface
+    ports:
+      - "8001:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - ai-sdr-network
+    profiles:
+      - gpu  # Only start with --profile gpu
+
+  # MCP Servers
+  mcp-filesystem:
+    build: ./mcp_servers
+    command: python filesystem_mcp.py
+    volumes:
+      - ./data:/data
+    ports:
+      - "8100:8100"
+    networks:
+      - ai-sdr-network
+
+  mcp-postgres:
+    build: ./mcp_servers
+    command: python postgres_mcp.py
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ai_sdr_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ai_sdr}
+    ports:
+      - "8101:8101"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ai-sdr-network
+
+  mcp-slack:
+    build: ./mcp_servers
+    command: python slack_mcp.py
+    environment:
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN}
+    ports:
+      - "8102:8102"
+    networks:
+      - ai-sdr-network
+    profiles:
+      - integrations
+
+  # GrowthBook MCP Server (Feature Flags, A/B Testing, Dynamic Configs)
+  mcp-growthbook:
+    build: ./mcp_servers
+    command: python growthbook_mcp.py
+    environment:
+      - GROWTHBOOK_API_URL=${GROWTHBOOK_API_URL:-http://growthbook:3100}
+      - GROWTHBOOK_API_KEY=${GROWTHBOOK_API_KEY}
+      - GROWTHBOOK_CLIENT_KEY=${GROWTHBOOK_CLIENT_KEY}
+    ports:
+      - "8105:8105"
+    depends_on:
+      - growthbook
+    networks:
+      - ai-sdr-network
+
+  # GrowthBook (Open-source feature flags & A/B testing)
+  growthbook:
+    image: growthbook/growthbook:latest
+    restart: unless-stopped
+    ports:
+      - "3100:3000"
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017/growthbook
+      - JWT_SECRET=${GROWTHBOOK_JWT_SECRET:-your-jwt-secret-change-me}
+      - ENCRYPTION_KEY=${GROWTHBOOK_ENCRYPTION_KEY:-your-encryption-key-32chars}
+      - APP_ORIGIN=${GROWTHBOOK_APP_ORIGIN:-http://localhost:3100}
+      - API_HOST=${GROWTHBOOK_API_HOST:-http://localhost:3100}
+    depends_on:
+      - mongo
+    networks:
+      - ai-sdr-network
+
+  # MongoDB for GrowthBook
+  mongo:
+    image: mongo:7-jammy
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - ai-sdr-network
+
+  # Main API Server
+  api:
+    build: .
+    command: uvicorn api.app:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
+      - ./config:/app/config
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-ai_sdr_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ai_sdr}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - DEPLOYMENT_MODE=${DEPLOYMENT_MODE:-saas}
+      - N8N_BASE_URL=${N8N_BASE_URL:-http://n8n:5678}
+      - N8N_API_KEY=${N8N_API_KEY}
+      - X402_ENABLED=${X402_ENABLED:-false}
+      - X402_WALLET_ADDRESS=${X402_WALLET_ADDRESS}
+      - X402_PAY_TO_ADDRESS=${X402_PAY_TO_ADDRESS}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ai-sdr-network
+
+  # LangGraph Orchestrator
+  orchestrator:
+    build: .
+    command: python -m agentic_mesh.orchestrator
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ai_sdr_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ai_sdr}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    depends_on:
+      - api
+    networks:
+      - ai-sdr-network
+
+  # uAgents Negotiation Node
+  uagents-node:
+    build: .
+    command: python -m agentic_mesh.agents.negotiation_agent
+    volumes:
+      - .:/app
+    ports:
+      - "8002:8001"
+    environment:
+      FETCHAI_WALLET_KEY: ${FETCHAI_WALLET_KEY}
+    depends_on:
+      - api
+    networks:
+      - ai-sdr-network
+    profiles:
+      - agents
+
+volumes:
+  postgres_data:
+  redis_data:
+  vllm_models:
+  mongo_data:
+
+networks:
+  ai-sdr-network:
+    name: ai-sdr-network
+    driver: bridge

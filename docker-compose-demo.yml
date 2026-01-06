@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ai_sdr
+      POSTGRES_USER: ai_sdr_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-demo_password_123}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_sdr_user -d ai_sdr"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-demo_redis_456}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  mongo:
+    image: mongo:7-jammy
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  growthbook:
+    image: growthbook/growthbook:latest
+    restart: unless-stopped
+    ports:
+      - "3100:3000"
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017/growthbook
+      - JWT_SECRET=${GROWTHBOOK_JWT_SECRET:-demo-jwt-secret-32characters}
+      - ENCRYPTION_KEY=${GROWTHBOOK_ENCRYPTION_KEY:-demo-encryption-key-32chars}
+    depends_on:
+      - mongo
+
+volumes:
+  postgres_data:
+  redis_data:
+  mongo_data:
+  growthbook_data: 
