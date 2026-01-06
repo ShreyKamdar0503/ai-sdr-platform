@@ -1,1 +1,1 @@
-"""Package: mcp_servers"""
+"""Package: vector_store"""
