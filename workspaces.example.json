@@ -1,0 +1,38 @@
+{
+  "demo": {
+    "workspace_id": "demo",
+    "name": "Demo Workspace",
+    "mode": "notion_first",
+    "crm_type": "none",
+    "notion_enabled": true,
+    "slack_enabled": true,
+    "n8n_enabled": true,
+    "ids": {
+      "notion_contacts_db": "...CONTACTS_DB_ID...",
+      "notion_accounts_db": "...ACCOUNTS_DB_ID...",
+      "notion_deals_db": "...DEALS_DB_ID...",
+      "notion_tasks_db": "...TASKS_DB_ID...",
+      "slack_ops_channel": "#ops"
+    },
+    "field_map": {
+      "email": "email",
+      "domain": "domain",
+      "stage": "stage"
+    },
+    "plays_enabled": {
+      "route_and_sla": true,
+      "lifecycle_enforce": true,
+      "weekly_digest": true
+    },
+    "thresholds": {
+      "definition_of_done": {
+        "poc": ["problem", "success_criteria"],
+        "closed_won": ["signed_date", "amount"]
+      }
+    },
+    "routing": {
+      "default_owner": "ops@company.com",
+      "high_fit_owner": "founder@company.com"
+    }
+  }
+}

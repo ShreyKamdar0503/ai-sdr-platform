@@ -1,0 +1,28 @@
+{
+  "demo-001": {
+    "workspace_id": "demo-001",
+    "name": "Demo Workspace",
+    "mode": "hybrid",
+    "crm_type": "none",
+    "notion_enabled": true,
+    "slack_enabled": true,
+    "n8n_enabled": true,
+    "ids": {
+      "notion_contacts_db": "demo-contacts",
+      "notion_accounts_db": "demo-accounts",
+      "notion_deals_db": "demo-deals",
+      "notion_tasks_db": "demo-tasks",
+      "slack_ops_channel": "demo-ops"
+    },
+    "routing": {
+      "default_owner": "sales@company.com",
+      "high_fit_owner": "senior-ae@company.com"
+    },
+    "thresholds": {
+      "definition_of_done": {
+        "poc": ["problem", "success_criteria"],
+        "closed_won": ["signed_date", "amount"]
+      }
+    }
+  }
+}
