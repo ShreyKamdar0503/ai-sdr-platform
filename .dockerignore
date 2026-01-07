@@ -1,0 +1,36 @@
+# git
+.git
+.gitignore
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+.env
+*.log
+
+# node / frontend
+node_modules/
+dist/
+build/
+.next/
+out/
+
+# misc
+.DS_Store
+.idea/
+.vscode/
+
+# large artifacts
+data/
+datasets/
+*.csv
+*.parquet
+*.pkl
+*.pt
+*.tar
+*.zip
+*.gz
